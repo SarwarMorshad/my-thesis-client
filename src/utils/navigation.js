@@ -1,5 +1,4 @@
 // src/utils/navigation.js
-
 import { ROUTES, INPUT_TYPES } from "../constants/routes";
 
 export const navigateToInput = (navigate, type = INPUT_TYPES.IMAGE) => {
