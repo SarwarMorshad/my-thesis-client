@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { navigateBack, navigateToResults, navigateToComparison } from "../utils/navigation";
-import { getAlgorithmById } from "../constants/algorithms";
+import { getAlgorithmById, getAlgorithmsByIds } from "../constants/algorithms";
 import ConfidenceChart from "../components/statistics/ConfidenceChart";
 import ClassDistribution from "../components/statistics/ClassDistribution";
 import DetectionTable from "../components/statistics/DetectionTable";
@@ -14,67 +14,132 @@ const Statistics = () => {
   const location = useLocation();
   const { algorithmId } = useParams();
   const [results, setResults] = useState(null);
+  const [currentAlgorithmId, setCurrentAlgorithmId] = useState(algorithmId);
   const [algorithm, setAlgorithm] = useState(null);
-  const [realDetections, setRealDetections] = useState([]); // Changed from mockDetections
-
-  // Load results data
-  useEffect(() => {
-    // Try location state first
-    if (location.state) {
-      setResults(location.state);
-      loadAlgorithmData(location.state);
-    } else {
-      // Fallback to sessionStorage
-      const data = sessionStorage.getItem("detectionResults");
-      if (data) {
-        const parsed = JSON.parse(data);
-        setResults(parsed);
-        loadAlgorithmData(parsed);
-      } else {
-        navigateBack(navigate, "/results");
-      }
-    }
-  }, [navigate, location.state, algorithmId]);
-
-  const loadAlgorithmData = (data) => {
-    const algo = getAlgorithmById(algorithmId);
-    setAlgorithm(algo);
-
-    // Load REAL detections instead of generating mock data
-    loadRealDetections(data, algorithmId);
-  };
+  const [allAlgorithms, setAllAlgorithms] = useState([]);
+  const [realDetections, setRealDetections] = useState([]);
 
   // Load real detections from detection results
   const loadRealDetections = (resultsData, algoId) => {
     const detectionResult = resultsData.detectionResults?.[algoId];
 
     if (detectionResult && detectionResult.detections) {
-      // Add colors to detections for visualization
       const colors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
-      const detectionsWithColors = detectionResult.detections.map((det, index) => ({
-        id: det.id || index,
-        class: det.class,
-        confidence: det.confidence,
-        x: det.bbox?.x || det.x || 0,
-        y: det.bbox?.y || det.y || 0,
-        width: det.bbox?.width || det.width || 0,
-        height: det.bbox?.height || det.height || 0,
-        color: colors[index % colors.length],
-      }));
+      const detectionsWithColors = detectionResult.detections.map((det, index) => {
+        let x, y, width, height;
+
+        if (det.bbox && typeof det.bbox === "object") {
+          x = det.bbox.x;
+          y = det.bbox.y;
+          width = det.bbox.width;
+          height = det.bbox.height;
+        } else {
+          x = det.x;
+          y = det.y;
+          width = det.width;
+          height = det.height;
+        }
+
+        return {
+          id: det.id || index,
+          class: det.class,
+          confidence: det.confidence,
+          x: Number(x),
+          y: Number(y),
+          width: Number(width),
+          height: Number(height),
+          color: colors[index % colors.length],
+        };
+      });
 
       setRealDetections(detectionsWithColors);
-      console.log("Loaded real detections:", detectionsWithColors);
+      console.log("Loaded real detections for", algoId, ":", detectionsWithColors);
     } else {
       console.warn("No detection results found for algorithm:", algoId);
       setRealDetections([]);
     }
   };
 
+  const loadAlgorithmData = (data, algoId) => {
+    const algo = getAlgorithmById(algoId);
+    setAlgorithm(algo);
+
+    // Load REAL detections
+    loadRealDetections(data, algoId);
+  };
+
+  const loadInitialData = (data) => {
+    // Load all algorithms that were processed
+    if (data.selectedAlgorithms && data.selectedAlgorithms.length > 0) {
+      const algos = getAlgorithmsByIds(data.selectedAlgorithms);
+      setAllAlgorithms(algos);
+    }
+
+    // Set initial algorithm
+    const initialAlgoId = algorithmId || data.selectedAlgorithms?.[0];
+    setCurrentAlgorithmId(initialAlgoId);
+
+    // Load data for initial algorithm
+    if (initialAlgoId) {
+      loadAlgorithmData(data, initialAlgoId);
+    }
+  };
+
+  // Load results data - runs once on mount
+  useEffect(() => {
+    // Try location state first
+    if (location.state) {
+      setResults(location.state);
+      loadInitialData(location.state);
+    } else {
+      // Fallback to sessionStorage
+      const data = sessionStorage.getItem("detectionResults");
+      if (data) {
+        const parsed = JSON.parse(data);
+        setResults(parsed);
+        loadInitialData(parsed);
+      } else {
+        navigateBack(navigate, "/results");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, location.state]);
+
+  // Update when algorithm changes
+  useEffect(() => {
+    if (results && currentAlgorithmId && currentAlgorithmId !== algorithmId) {
+      loadAlgorithmData(results, currentAlgorithmId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAlgorithmId]);
+
+  const calculateStats = () => {
+    if (realDetections.length === 0) {
+      return {
+        totalDetections: 0,
+        avgConfidence: "N/A",
+        uniqueClasses: 0,
+        processingTime: results?.detectionResults?.[currentAlgorithmId]?.processingTime || "N/A",
+      };
+    }
+
+    const avgConfidence = realDetections.reduce((sum, d) => sum + d.confidence, 0) / realDetections.length;
+    const uniqueClasses = new Set(realDetections.map((d) => d.class)).size;
+    const processingTime = results?.detectionResults?.[currentAlgorithmId]?.processingTime || "N/A";
+
+    return {
+      totalDetections: realDetections.length,
+      avgConfidence: (avgConfidence * 100).toFixed(1) + "%",
+      uniqueClasses,
+      processingTime,
+    };
+  };
+
   const handleExportJSON = () => {
     if (!results || !algorithm) return;
 
-    const detectionResult = results.detectionResults?.[algorithmId];
+    const detectionResult = results.detectionResults?.[currentAlgorithmId];
 
     const exportData = {
       algorithm: algorithm.name,
@@ -112,26 +177,11 @@ const Statistics = () => {
     exportAsCSV(csvData, `${algorithm.id}_detections.csv`);
   };
 
-  const calculateStats = () => {
-    if (realDetections.length === 0) {
-      return {
-        totalDetections: 0,
-        avgConfidence: "N/A",
-        uniqueClasses: 0,
-        processingTime: results?.detectionResults?.[algorithmId]?.processingTime || "N/A",
-      };
-    }
-
-    const avgConfidence = realDetections.reduce((sum, d) => sum + d.confidence, 0) / realDetections.length;
-    const uniqueClasses = new Set(realDetections.map((d) => d.class)).size;
-    const processingTime = results?.detectionResults?.[algorithmId]?.processingTime || "N/A";
-
-    return {
-      totalDetections: realDetections.length,
-      avgConfidence: (avgConfidence * 100).toFixed(1) + "%",
-      uniqueClasses,
-      processingTime,
-    };
+  // Handle algorithm change
+  const handleAlgorithmChange = (algoId) => {
+    setCurrentAlgorithmId(algoId);
+    // Update URL without reload
+    window.history.replaceState(null, "", `/statistics/${algoId}`);
   };
 
   if (!results || !algorithm) {
@@ -168,6 +218,54 @@ const Statistics = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Algorithm Selector */}
+        {allAlgorithms.length > 1 && (
+          <div className="mb-8">
+            <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
+              <h3 className="text-white font-bold mb-4">Select Algorithm to View Statistics</h3>
+              <div className="flex flex-wrap gap-3">
+                {allAlgorithms.map((algo) => {
+                  const isActive = algo.id === currentAlgorithmId;
+                  const algoResults = results.detectionResults?.[algo.id];
+                  const detectionCount = algoResults?.detections?.length || 0;
+
+                  return (
+                    <button
+                      key={algo.id}
+                      onClick={() => handleAlgorithmChange(algo.id)}
+                      className={`px-6 py-4 rounded-xl font-medium transition ${
+                        isActive ? "ring-2 ring-offset-2 ring-offset-slate-900" : "hover:bg-white/10"
+                      }`}
+                      style={
+                        isActive
+                          ? {
+                              backgroundColor: algo.color,
+                              color: "white",
+                              ringColor: algo.color,
+                            }
+                          : {
+                              backgroundColor: `${algo.color}20`,
+                              color: algo.color,
+                            }
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="font-bold">{algo.name}</p>
+                          <p className={`text-xs ${isActive ? "text-white/80" : "opacity-70"}`}>
+                            {detectionCount} objects detected
+                          </p>
+                        </div>
+                        {isActive && <span className="text-xl">✓</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Algorithm Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -209,7 +307,7 @@ const Statistics = () => {
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-8">
             <p className="text-yellow-200 text-sm flex items-center gap-2">
               <span>⚠️</span>
-              No objects were detected in this image. Try adjusting the confidence threshold or using a
+              No objects were detected by {algorithm.name}. Try adjusting the confidence threshold or using a
               different algorithm.
             </p>
           </div>

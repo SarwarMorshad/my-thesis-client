@@ -320,17 +320,25 @@ export const detectWithYolov8 = async (imageElement, options = {}) => {
     console.log(`Detections after NMS: ${detections.length}`);
 
     // Add IDs and ensure bbox format
-    detections = detections.map((det, index) => ({
-      id: index,
-      class: det.class,
-      confidence: det.confidence,
-      bbox: det.bbox,
-      // Also add x, y, width, height at top level for compatibility
-      x: det.bbox.x,
-      y: det.bbox.y,
-      width: det.bbox.width,
-      height: det.bbox.height,
-    }));
+    detections = detections.map((det, index) => {
+      console.log(`YOLOv8 Detection ${index} BEFORE format:`, det);
+
+      const formatted = {
+        id: index,
+        class: det.class,
+        confidence: det.confidence,
+        bbox: {
+          x: Number(det.bbox.x),
+          y: Number(det.bbox.y),
+          width: Number(det.bbox.width),
+          height: Number(det.bbox.height),
+        },
+      };
+
+      console.log(`YOLOv8 Detection ${index} AFTER format:`, formatted);
+
+      return formatted;
+    });
 
     console.log("Final YOLOv8 detections:", detections);
 

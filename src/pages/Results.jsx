@@ -54,8 +54,6 @@ const Results = () => {
     }
   }, [selectedAlgorithm]);
 
-  // In src/pages/Results.jsx - Update loadDetectionsForAlgorithm
-
   const loadDetectionsForAlgorithm = (resultsData, algoId) => {
     const detectionResult = resultsData.detectionResults?.[algoId];
 
@@ -66,31 +64,56 @@ const Results = () => {
     if (detectionResult && detectionResult.detections) {
       const colors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
-      const detectionsWithColors = detectionResult.detections.map((det, index) => {
-        // Ensure we have all required fields
-        const detection = {
-          id: det.id || index,
-          class: det.class,
-          confidence: det.confidence,
-          // Get coordinates from either format
-          x: det.x ?? det.bbox?.x ?? 0,
-          y: det.y ?? det.bbox?.y ?? 0,
-          width: det.width ?? det.bbox?.width ?? 0,
-          height: det.height ?? det.bbox?.height ?? 0,
-          color: colors[index % colors.length],
-        };
+      const detectionsWithColors = detectionResult.detections
+        .map((det, index) => {
+          // CRITICAL FIX: Extract bbox correctly
+          let x, y, width, height;
 
-        console.log(`Detection ${index}:`, detection);
+          if (det.bbox && typeof det.bbox === "object") {
+            // YOLOv8 format: { bbox: { x, y, width, height } }
+            x = det.bbox.x;
+            y = det.bbox.y;
+            width = det.bbox.width;
+            height = det.bbox.height;
+          } else if (det.x !== undefined) {
+            // Alternative format: { x, y, width, height }
+            x = det.x;
+            y = det.y;
+            width = det.width;
+            height = det.height;
+          } else {
+            console.error("Invalid detection format:", det);
+            return null;
+          }
 
-        // Validate detection
-        if (detection.width <= 0 || detection.height <= 0) {
-          console.warn(`Invalid detection ${index}:`, detection);
-        }
+          const detection = {
+            id: det.id ?? index,
+            class: det.class,
+            confidence: det.confidence,
+            x: Number(x),
+            y: Number(y),
+            width: Number(width),
+            height: Number(height),
+            color: colors[index % colors.length],
+          };
 
-        return detection;
-      });
+          console.log(`Detection ${index} (${detection.class}):`, {
+            x: detection.x,
+            y: detection.y,
+            width: detection.width,
+            height: detection.height,
+          });
 
-      console.log("Final detections with colors:", detectionsWithColors);
+          // Validate
+          if (detection.width <= 0 || detection.height <= 0) {
+            console.error(`❌ Invalid detection ${index}:`, detection);
+          }
+
+          return detection;
+        })
+        .filter((d) => d !== null); // Remove any null detections
+
+      console.log("Final detections:", detectionsWithColors);
       setCurrentDetections(detectionsWithColors);
     } else {
       console.warn("No detections found for algorithm:", algoId);
@@ -369,23 +392,6 @@ const Results = () => {
             </button>
           )}
         </div>
-        // Add this temporarily to Results.jsx for testing
-        <button
-          onClick={() => {
-            const canvas = document.querySelector("canvas");
-            if (canvas) {
-              const ctx = canvas.getContext("2d");
-              // Draw a test red rectangle
-              ctx.strokeStyle = "red";
-              ctx.lineWidth = 10;
-              ctx.strokeRect(50, 50, 200, 200);
-              console.log("Test box drawn");
-            }
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded"
-        >
-          🧪 Test Draw Box
-        </button>
       </main>
     </div>
   );

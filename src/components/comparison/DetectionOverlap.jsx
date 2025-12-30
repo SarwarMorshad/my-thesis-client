@@ -1,40 +1,79 @@
 // src/components/comparison/DetectionOverlap.jsx
-
 const DetectionOverlap = ({ algorithms, detections }) => {
-  // Group detections by what algorithms found them
-  const allDetected = [];
-  const partialDetected = [];
-  const uniqueDetections = {};
+  // Analyze real detections
+  const analyzeOverlap = () => {
+    if (!detections || algorithms.length < 2) {
+      return { allDetected: [], partialDetected: [], uniqueDetections: {} };
+    }
 
-  // Mock overlap analysis
-  const classes = ["person", "car", "dog", "bicycle"];
-
-  // All algorithms detected
-  classes.slice(0, 2).forEach((cls) => {
-    allDetected.push({
-      class: cls,
-      algorithms: algorithms.map((a) => ({
-        name: a.name,
-        confidence: (0.8 + Math.random() * 0.15).toFixed(2),
-      })),
+    // Get all unique classes across all algorithms
+    const allClasses = new Set();
+    Object.values(detections).forEach((dets) => {
+      dets.forEach((det) => allClasses.add(det.class));
     });
-  });
 
-  // Only some algorithms detected
-  if (algorithms.length > 1) {
-    classes.slice(2, 3).forEach((cls) => {
-      partialDetected.push({
-        class: cls,
-        detectedBy: [algorithms[0].name],
-        missedBy: algorithms.slice(1).map((a) => a.name),
+    const allDetected = [];
+    const partialDetected = [];
+    const uniqueDetections = {};
+
+    // Initialize unique detections counter
+    algorithms.forEach((algo) => {
+      uniqueDetections[algo.id] = 0;
+    });
+
+    // Check each class
+    allClasses.forEach((className) => {
+      const detectedBy = [];
+      const confidences = {};
+
+      algorithms.forEach((algo) => {
+        const algoDetections = detections[algo.id] || [];
+        const hasClass = algoDetections.some((det) => det.class === className);
+
+        if (hasClass) {
+          detectedBy.push(algo.name);
+          // Get average confidence for this class
+          const classDetections = algoDetections.filter((det) => det.class === className);
+          const avgConf =
+            classDetections.reduce((sum, det) => sum + det.confidence, 0) / classDetections.length;
+          confidences[algo.name] = avgConf;
+        }
       });
-    });
-  }
 
-  const agreementRate =
-    allDetected.length > 0
-      ? ((allDetected.length / (allDetected.length + partialDetected.length)) * 100).toFixed(0)
-      : 0;
+      if (detectedBy.length === algorithms.length) {
+        // All algorithms detected this class
+        allDetected.push({
+          class: className,
+          algorithms: algorithms.map((a) => ({
+            name: a.name,
+            confidence: confidences[a.name] || 0,
+          })),
+        });
+      } else if (detectedBy.length > 0) {
+        // Only some algorithms detected this
+        const missedBy = algorithms.filter((a) => !detectedBy.includes(a.name)).map((a) => a.name);
+        partialDetected.push({
+          class: className,
+          detectedBy,
+          missedBy,
+        });
+
+        // Count as unique for those who detected it
+        detectedBy.forEach((algoName) => {
+          const algo = algorithms.find((a) => a.name === algoName);
+          if (algo && missedBy.length > 0) {
+            uniqueDetections[algo.id]++;
+          }
+        });
+      }
+    });
+
+    const agreementRate = allClasses.size > 0 ? ((allDetected.length / allClasses.size) * 100).toFixed(0) : 0;
+
+    return { allDetected, partialDetected, uniqueDetections, agreementRate };
+  };
+
+  const { allDetected, partialDetected, uniqueDetections, agreementRate } = analyzeOverlap();
 
   return (
     <div className="bg-white/5 rounded-xl p-6">
@@ -106,13 +145,13 @@ const DetectionOverlap = ({ algorithms, detections }) => {
       <div>
         <h4 className="text-white font-medium mb-3 flex items-center gap-2">
           <span className="text-blue-400">ℹ</span>
-          Unique Detections
+          Unique Detections (Not Found by Others)
         </h4>
         <div className="space-y-2">
           {algorithms.map((algo) => (
             <div key={algo.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
               <span className="text-gray-300">{algo.name} only:</span>
-              <span className="text-white font-bold">{Math.floor(Math.random() * 2)}</span>
+              <span className="text-white font-bold">{uniqueDetections[algo.id]}</span>
             </div>
           ))}
         </div>

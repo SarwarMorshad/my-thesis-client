@@ -44,18 +44,42 @@ const Comparison = () => {
     }
   };
 
-  // Generate mock comparison data
+  // USE REAL COMPARISON DATA
   const generateComparisonData = () => {
     const speed = {};
     const detections = {};
     const confidence = {};
 
     algorithms.forEach((algo) => {
-      speed[algo.id] = Math.floor(Math.random() * 50) + 30; // 30-80ms
-      detections[algo.id] = Math.floor(Math.random() * 5) + 5; // 5-10 objects
-      confidence[algo.id] = Math.floor(Math.random() * 20) + 75; // 75-95%
+      const algoResults = results.detectionResults?.[algo.id];
+
+      if (algoResults) {
+        // Real processing time
+        const timeString = algoResults.processingTime || "0s";
+        const timeMs = parseFloat(timeString) * 1000; // Convert seconds to ms
+        speed[algo.id] = Math.round(timeMs);
+
+        // Real detection count
+        detections[algo.id] = algoResults.detections?.length || 0;
+
+        // Real average confidence
+        if (algoResults.detections && algoResults.detections.length > 0) {
+          const avgConf =
+            algoResults.detections.reduce((sum, det) => sum + det.confidence, 0) /
+            algoResults.detections.length;
+          confidence[algo.id] = Math.round(avgConf * 100);
+        } else {
+          confidence[algo.id] = 0;
+        }
+      } else {
+        // Fallback if no results
+        speed[algo.id] = 0;
+        detections[algo.id] = 0;
+        confidence[algo.id] = 0;
+      }
     });
 
+    console.log("Real comparison data:", { speed, detections, confidence });
     return { speed, detections, confidence };
   };
 
@@ -89,6 +113,22 @@ const Comparison = () => {
     return metrics;
   };
 
+  // Get real detections for overlap analysis
+  const getAllDetections = () => {
+    const allDetections = {};
+
+    algorithms.forEach((algo) => {
+      const algoResults = results.detectionResults?.[algo.id];
+      if (algoResults && algoResults.detections) {
+        allDetections[algo.id] = algoResults.detections;
+      } else {
+        allDetections[algo.id] = [];
+      }
+    });
+
+    return allDetections;
+  };
+
   if (!results || algorithms.length < 2) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,6 +142,7 @@ const Comparison = () => {
 
   const comparisonData = generateComparisonData();
   const metrics = generateMetrics(comparisonData);
+  const allDetections = getAllDetections();
 
   return (
     <div className="min-h-screen">
@@ -134,35 +175,46 @@ const Comparison = () => {
 
         {/* Algorithms Being Compared */}
         <div className="grid md:grid-cols-3 gap-4 mb-8">
-          {algorithms.map((algo) => (
-            <div
-              key={algo.id}
-              className="border rounded-xl p-6"
-              style={{
-                backgroundColor: `${algo.color}10`,
-                borderColor: `${algo.color}40`,
-              }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${algo.color}20` }}
-                >
-                  <span className="text-2xl">🎯</span>
+          {algorithms.map((algo) => {
+            const algoDetections = allDetections[algo.id] || [];
+            return (
+              <div
+                key={algo.id}
+                className="border rounded-xl p-6"
+                style={{
+                  backgroundColor: `${algo.color}10`,
+                  borderColor: `${algo.color}40`,
+                }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-12 h-12 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${algo.color}20` }}
+                  >
+                    <span className="text-2xl">🎯</span>
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold">{algo.name}</h3>
+                    <p className="text-gray-400 text-sm">{algo.version}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-white font-bold">{algo.name}</h3>
-                  <p className="text-gray-400 text-sm">{algo.version}</p>
+                <p className="text-gray-300 text-sm mb-3">{algo.description}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                  <span className="text-gray-400 text-xs">Detected:</span>
+                  <span className="text-white font-bold">{algoDetections.length} objects</span>
                 </div>
               </div>
-              <p className="text-gray-300 text-sm">{algo.description}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Visual Comparison */}
         <div className="mb-8">
-          <SideBySideView algorithms={algorithms} imageUrl={results.fileInfo?.url} />
+          <SideBySideView
+            algorithms={algorithms}
+            imageUrl={results.fileInfo?.url}
+            detections={allDetections}
+          />
         </div>
 
         {/* Performance Table */}
@@ -173,7 +225,7 @@ const Comparison = () => {
         {/* Grid: Charts and Overlap */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
           <ComparisonCharts algorithms={algorithms} data={comparisonData} />
-          <DetectionOverlap algorithms={algorithms} detections={[]} />
+          <DetectionOverlap algorithms={algorithms} detections={allDetections} />
         </div>
 
         {/* Insights Panel */}
@@ -184,7 +236,7 @@ const Comparison = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4 justify-center">
           <button
-            onClick={() => navigateToResults(navigate)}
+            onClick={() => navigateToResults(navigate, results)}
             className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition"
           >
             ← Back to Results
@@ -192,8 +244,12 @@ const Comparison = () => {
           <button
             onClick={() => {
               const exportData = {
-                algorithms: algorithms.map((a) => a.name),
+                algorithms: algorithms.map((a) => ({
+                  name: a.name,
+                  detections: allDetections[a.id]?.length || 0,
+                })),
                 metrics,
+                detections: allDetections,
                 timestamp: new Date().toISOString(),
               };
               const blob = new Blob([JSON.stringify(exportData, null, 2)], {
