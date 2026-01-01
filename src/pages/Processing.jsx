@@ -4,9 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { navigateToResults, navigateBack } from "../utils/navigation";
 import { getAlgorithmsByIds } from "../constants/algorithms";
 import { runDetection } from "../services/detectionService";
-import AlgorithmProgress from "../components/processing/AlgorithmProgress";
-import ProcessingStats from "../components/processing/ProcessingStats";
-import ProcessingLog from "../components/processing/ProcessingLog";
 
 const Processing = () => {
   const navigate = useNavigate();
@@ -15,13 +12,11 @@ const Processing = () => {
   const [algorithmStates, setAlgorithmStates] = useState({});
   const [overallProgress, setOverallProgress] = useState(0);
   const [logs, setLogs] = useState([]);
-  const [isPaused, setIsPaused] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [detectionResults, setDetectionResults] = useState({});
-  const pausedRef = useRef(false);
   const imageElementRef = useRef(null);
+  const logsEndRef = useRef(null);
 
-  // Load processing data
   useEffect(() => {
     if (location.state) {
       setProcessingData(location.state);
@@ -38,12 +33,11 @@ const Processing = () => {
     }
   }, [navigate, location.state]);
 
-  // Update pausedRef when isPaused changes
+  // Auto-scroll logs
   useEffect(() => {
-    pausedRef.current = isPaused;
-  }, [isPaused]);
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
 
-  // Initialize processing
   const initializeProcessing = (data) => {
     const algorithms = getAlgorithmsByIds(data.selectedAlgorithms);
     const initialStates = {};
@@ -57,65 +51,48 @@ const Processing = () => {
     });
 
     setAlgorithmStates(initialStates);
-    addLog("info", "Initialization complete");
-    addLog("info", `Processing ${data.fileInfo.name} with ${algorithms.length} algorithm(s)`);
+    addLog("info", "🚀 Initialization complete");
+    addLog("info", `📁 Processing ${data.fileInfo.name} with ${algorithms.length} algorithm(s)`);
 
-    // Load image into memory
     loadImage(data.fileInfo.url);
-
-    // Start processing
     setTimeout(() => startProcessing(algorithms, data), 1000);
   };
 
-  // Load image element
   const loadImage = (imageUrl) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       imageElementRef.current = img;
-      addLog("success", "Image loaded successfully");
+      addLog("success", "✅ Image loaded successfully");
     };
     img.onerror = () => {
-      addLog("error", "Failed to load image");
+      addLog("error", "❌ Failed to load image");
     };
     img.src = imageUrl;
   };
 
-  // Add log entry
   const addLog = (type, message) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, { type, message, timestamp }]);
   };
 
-  // Start real processing
   const startProcessing = async (algorithms, data) => {
-    const isVideo = data.inputType === "video";
-
     for (let i = 0; i < algorithms.length; i++) {
-      // Check if paused
-      while (pausedRef.current) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
       const algo = algorithms[i];
-      addLog("info", `Starting ${algo.name}...`);
-      addLog("info", `Loading ${algo.name} model...`);
+      addLog("info", `⚡ Starting ${algo.name}...`);
+      addLog("info", `📥 Loading ${algo.name} model...`);
 
-      // Update to processing
       updateAlgorithmState(algo.id, { status: "processing", progress: 0 });
 
       try {
-        // Wait for image to load
         while (!imageElementRef.current) {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
-        // Run real detection
         const result = await runDetection(algo.id, imageElementRef.current, {
           confidenceThreshold: data.detectionSettings?.confidenceThreshold || 0.5,
           nmsThreshold: data.detectionSettings?.nmsThreshold || 0.45,
           onProgress: (progressData) => {
-            // Update progress based on detection status
             let progress = 0;
             if (progressData.status === "loading") {
               progress = 20;
@@ -133,20 +110,16 @@ const Processing = () => {
             updateAlgorithmState(algo.id, {
               status: "processing",
               progress: progress,
-              stats: {
-                speed: "...",
-              },
+              stats: { speed: "..." },
             });
           },
         });
 
-        // Store detection results
         setDetectionResults((prev) => ({
           ...prev,
           [algo.id]: result,
         }));
 
-        // Mark as completed
         updateAlgorithmState(algo.id, {
           status: "completed",
           progress: 100,
@@ -156,11 +129,11 @@ const Processing = () => {
           },
         });
 
-        addLog("success", `${algo.name} completed in ${result.processingTime}`);
-        addLog("success", `Detected ${result.detections.length} objects`);
+        addLog("success", `✅ ${algo.name} completed in ${result.processingTime}`);
+        addLog("success", `🎯 Detected ${result.detections.length} objects`);
       } catch (error) {
         console.error(`Error processing with ${algo.name}:`, error);
-        addLog("error", `${algo.name} failed: ${error.message}`);
+        addLog("error", `❌ ${algo.name} failed: ${error.message}`);
 
         updateAlgorithmState(algo.id, {
           status: "error",
@@ -170,12 +143,10 @@ const Processing = () => {
       }
     }
 
-    // All completed
     setIsCompleted(true);
-    addLog("success", "All algorithms completed successfully!");
+    addLog("success", "🎉 All algorithms completed successfully!");
   };
 
-  // Update algorithm state
   const updateAlgorithmState = (algoId, updates) => {
     setAlgorithmStates((prev) => ({
       ...prev,
@@ -186,7 +157,6 @@ const Processing = () => {
     }));
   };
 
-  // Calculate overall progress
   useEffect(() => {
     if (Object.keys(algorithmStates).length === 0) return;
 
@@ -195,32 +165,15 @@ const Processing = () => {
     setOverallProgress(avg);
   }, [algorithmStates]);
 
-  // Handle pause/resume
-  const handlePauseResume = () => {
-    setIsPaused(!isPaused);
-    addLog("info", isPaused ? "Processing resumed" : "Processing paused");
-  };
-
-  // Handle cancel
-  const handleCancel = () => {
-    if (window.confirm("Are you sure you want to cancel processing?")) {
-      addLog("warning", "Processing cancelled by user");
-      setTimeout(() => navigateBack(navigate), 1000);
-    }
-  };
-
-  // Handle view results
   const handleViewResults = () => {
-    // Combine processing data with detection results
     const results = {
       ...processingData,
       algorithmStates,
-      detectionResults, // Real detection results
+      detectionResults,
       timestamp: new Date().toISOString(),
     };
 
     try {
-      // Store results without URL
       const resultsForStorage = {
         ...results,
         fileInfo: {
@@ -233,7 +186,6 @@ const Processing = () => {
       console.warn("Could not store results:", error.message);
     }
 
-    // Navigate with full data including URL
     navigate("/results", {
       state: {
         ...results,
@@ -247,10 +199,10 @@ const Processing = () => {
 
   if (!processingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-[#E6E6E6] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">⏳</div>
-          <p className="text-white">Loading...</p>
+          <p className="text-gray-700 font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -261,106 +213,263 @@ const Processing = () => {
     completed: Object.values(algorithmStates).filter((s) => s.status === "completed").length,
     processing: Object.values(algorithmStates).filter((s) => s.status === "processing").length,
     queued: Object.values(algorithmStates).filter((s) => s.status === "queued").length,
-    estimatedTimeRemaining: isCompleted ? null : "Calculating...",
+  };
+
+  const getLogIcon = (type) => {
+    switch (type) {
+      case "success":
+        return "✅";
+      case "error":
+        return "❌";
+      case "warning":
+        return "⚠️";
+      default:
+        return "ℹ️";
+    }
+  };
+
+  const getLogColor = (type) => {
+    switch (type) {
+      case "success":
+        return "text-green-600";
+      case "error":
+        return "text-red-600";
+      case "warning":
+        return "text-yellow-600";
+      default:
+        return "text-gray-600";
+    }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#E6E6E6] pb-24">
       {/* Header */}
-      <header className="p-6 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-white">⏳ Processing</h1>
-          </div>
-          <div className="text-sm text-gray-400">
-            File: <span className="text-white font-medium">{processingData.fileInfo.name}</span>
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-[#005F50] rounded-xl flex items-center justify-center">
+                <div className="animate-spin">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Processing Detection</h1>
+                <p className="text-sm text-gray-600">Running AI algorithms</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">File:</p>
+              <p className="font-semibold text-gray-900 text-sm">{processingData.fileInfo.name}</p>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Overall Progress Stats */}
-        <div className="mb-8">
-          <ProcessingStats overallProgress={overallProgress} stats={stats} />
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Overall Progress */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">Overall Progress</h2>
+            <span className="text-2xl font-bold text-[#005F50]">{overallProgress}%</span>
+          </div>
+
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
+            <div
+              className="bg-gradient-to-r from-[#005F50] to-[#00B084] h-4 rounded-full transition-all duration-500"
+              style={{ width: `${overallProgress}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-3xl font-bold text-blue-600">{stats.processing}</p>
+              <p className="text-sm text-gray-600">Processing</p>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-3xl font-bold text-gray-600">{stats.queued}</p>
+              <p className="text-sm text-gray-600">Queued</p>
+            </div>
+          </div>
         </div>
 
-        {/* Info Message */}
-        {!isCompleted && (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-8">
-            <p className="text-blue-200 text-sm flex items-center gap-2">
-              <span>💡</span>
-              Real object detection in progress. First run may take longer as models are downloaded.
-            </p>
+        {/* Status Message */}
+        {isCompleted ? (
+          <div className="bg-green-50 border-2 border-green-500 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-green-900">Processing Complete!</p>
+                <p className="text-sm text-green-700">
+                  All algorithms finished. Click "View Results" to see detections.
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Paused Message */}
-        {isPaused && !isCompleted && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-8">
-            <p className="text-yellow-200 text-sm flex items-center gap-2">
-              <span>⏸️</span>
-              Processing is paused. Click Resume to continue.
-            </p>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {isCompleted && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-8">
-            <p className="text-green-200 text-sm flex items-center gap-2">
-              <span>✓</span>
-              Processing completed successfully! View your results below.
-            </p>
+        ) : (
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="animate-pulse w-3 h-3 bg-blue-600 rounded-full"></div>
+              <p className="text-sm font-medium text-blue-900">Processing in progress... Please wait.</p>
+            </div>
           </div>
         )}
 
         {/* Algorithm Progress Cards */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {algorithms.map((algo) => (
-            <AlgorithmProgress
-              key={algo.id}
-              algorithm={algo}
-              status={algorithmStates[algo.id]?.status}
-              progress={algorithmStates[algo.id]?.progress || 0}
-              stats={algorithmStates[algo.id]?.stats}
-            />
-          ))}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          {algorithms.map((algo) => {
+            const state = algorithmStates[algo.id];
+            const isActive = state?.status === "processing";
+            const isDone = state?.status === "completed";
+            const hasError = state?.status === "error";
+
+            return (
+              <div
+                key={algo.id}
+                className={`bg-white rounded-xl border-2 p-5 transition-all ${
+                  isActive
+                    ? "border-blue-500 shadow-lg"
+                    : isDone
+                    ? "border-green-500"
+                    : hasError
+                    ? "border-red-500"
+                    : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${
+                        isDone
+                          ? "bg-green-500 text-white"
+                          : isActive
+                          ? "bg-blue-500 text-white"
+                          : hasError
+                          ? "bg-red-500 text-white"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {isDone ? "✓" : isActive ? "⚡" : hasError ? "✕" : algo.name.slice(0, 2)}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">{algo.name}</h3>
+                      <p className="text-xs text-gray-500 capitalize">{state?.status || "queued"}</p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{state?.progress || 0}%</span>
+                </div>
+
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      isDone
+                        ? "bg-green-500"
+                        : isActive
+                        ? "bg-blue-500"
+                        : hasError
+                        ? "bg-red-500"
+                        : "bg-gray-400"
+                    }`}
+                    style={{ width: `${state?.progress || 0}%` }}
+                  />
+                </div>
+
+                {state?.stats?.objectsDetected !== undefined && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Objects detected:</span>
+                    <span className="font-bold text-gray-900">{state.stats.objectsDetected}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Processing Log */}
-        <div className="mb-8">
-          <ProcessingLog logs={logs} />
-        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div className="bg-gray-800 px-5 py-3 flex items-center gap-2">
+            <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <h3 className="font-bold text-white">Processing Log</h3>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-center gap-4">
-          {!isCompleted ? (
-            <>
-              <button
-                onClick={handlePauseResume}
-                disabled={true} // Disable pause for now (hard to implement with async)
-                className="px-6 py-3 bg-gray-600 text-gray-400 cursor-not-allowed font-medium rounded-xl transition"
-              >
-                {isPaused ? "▶️ Resume" : "⏸️ Pause"}
-              </button>
-              <button
-                onClick={handleCancel}
-                className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition"
-              >
-                ❌ Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleViewResults}
-              className="px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-medium rounded-xl transition flex items-center gap-2"
-            >
-              View Results
-              <span>→</span>
-            </button>
-          )}
+          <div className="bg-gray-900 p-4 font-mono text-sm max-h-80 overflow-y-auto">
+            {logs.map((log, index) => (
+              <div key={index} className="flex items-start gap-3 mb-2 hover:bg-gray-800 px-2 py-1 rounded">
+                <span className="text-gray-500 text-xs">{log.timestamp}</span>
+                <span className={getLogColor(log.type)}>{getLogIcon(log.type)}</span>
+                <span className="text-gray-300 flex-1">{log.message}</span>
+              </div>
+            ))}
+            <div ref={logsEndRef} />
+          </div>
         </div>
       </main>
+
+      {/* Fixed Bottom Action */}
+      {/* View Results Button - Compact Design */}
+      {isCompleted && (
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-500 p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-gray-900">All Processing Complete!</p>
+                  <p className="text-sm text-gray-600">Ready to view your detection results</p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleViewResults}
+                className="px-8 py-3 bg-[#005F50] hover:bg-[#007A65] text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 flex-shrink-0"
+              >
+                View Results
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

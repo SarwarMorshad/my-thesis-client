@@ -1,37 +1,67 @@
 // src/components/results/ViewControls.jsx
-
 const ViewControls = ({ settings, onSettingsChange }) => {
+  const handleToggle = (key) => {
+    onSettingsChange({
+      ...settings,
+      [key]: !settings[key],
+    });
+  };
+
   return (
-    <div className="bg-white/5 rounded-xl p-6">
-      <h3 className="text-white font-bold mb-4">Display Options</h3>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h3 className="text-lg font-bold text-gray-900 mb-4">Display Options</h3>
+
       <div className="space-y-4">
-        <label className="flex items-center justify-between cursor-pointer">
-          <span className="text-gray-300">Show Labels</span>
-          <input
-            type="checkbox"
-            checked={settings.showLabels}
-            onChange={(e) => onSettingsChange({ ...settings, showLabels: e.target.checked })}
-            className="w-5 h-5 accent-blue-500"
-          />
-        </label>
-        <label className="flex items-center justify-between cursor-pointer">
-          <span className="text-gray-300">Show Confidence</span>
-          <input
-            type="checkbox"
-            checked={settings.showConfidence}
-            onChange={(e) => onSettingsChange({ ...settings, showConfidence: e.target.checked })}
-            className="w-5 h-5 accent-blue-500"
-          />
-        </label>
-        <label className="flex items-center justify-between cursor-pointer">
-          <span className="text-gray-300">Show Bounding Boxes</span>
-          <input
-            type="checkbox"
-            checked={settings.showBoxes}
-            onChange={(e) => onSettingsChange({ ...settings, showBoxes: e.target.checked })}
-            className="w-5 h-5 accent-blue-500"
-          />
-        </label>
+        {/* Show Labels */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">Show Labels</label>
+          <button
+            onClick={() => handleToggle("showLabels")}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              settings.showLabels ? "bg-[#005F50]" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                settings.showLabels ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Show Confidence */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">Show Confidence</label>
+          <button
+            onClick={() => handleToggle("showConfidence")}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              settings.showConfidence ? "bg-[#005F50]" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                settings.showConfidence ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Show Bounding Boxes */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">Show Bounding Boxes</label>
+          <button
+            onClick={() => handleToggle("showBoxes")}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              settings.showBoxes ? "bg-[#005F50]" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                settings.showBoxes ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ const WebcamCapture = ({ type, onCapture }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -15,49 +16,79 @@ const WebcamCapture = ({ type, onCapture }) => {
 
   // Start webcam
   const startWebcam = async () => {
+    setIsLoading(true);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: isVideo,
       });
+
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
       setError(null);
     } catch (err) {
       setError("Unable to access webcam. Please check permissions.");
       console.error("Error accessing webcam:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Update video element when stream changes
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   // Stop webcam
   const stopWebcam = () => {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     }
   };
 
   // Capture image
   const captureImage = () => {
+    if (!videoRef.current) return;
+
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0);
 
-    canvas.toBlob((blob) => {
-      const file = new File([blob], `webcam_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
-      onCapture(file);
-      stopWebcam();
-    }, "image/jpeg");
+    canvas.toBlob(
+      (blob) => {
+        const file = new File([blob], `webcam_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
+        onCapture(file);
+        stopWebcam();
+      },
+      "image/jpeg",
+      0.95
+    );
   };
 
   // Start recording
   const startRecording = () => {
+    if (!stream) return;
+
     chunksRef.current = [];
-    mediaRecorderRef.current = new MediaRecorder(stream);
+
+    try {
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp9",
+      });
+    } catch (e) {
+      // Fallback to default codecs
+      mediaRecorderRef.current = new MediaRecorder(stream);
+    }
 
     mediaRecorderRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -72,12 +103,19 @@ const WebcamCapture = ({ type, onCapture }) => {
       stopWebcam();
     };
 
-    mediaRecorderRef.current.start();
+    mediaRecorderRef.current.start(100); // Collect data every 100ms
     setIsRecording(true);
 
     // Start timer
     timerRef.current = setInterval(() => {
-      setRecordingTime((prev) => prev + 1);
+      setRecordingTime((prev) => {
+        const newTime = prev + 1;
+        // Auto-stop at 2 minutes (120 seconds)
+        if (newTime >= 120) {
+          stopRecording();
+        }
+        return newTime;
+      });
     }, 1000);
   };
 
@@ -116,6 +154,8 @@ const WebcamCapture = ({ type, onCapture }) => {
         {stream ? (
           <>
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+
+            {/* Recording Indicator */}
             {isRecording && (
               <div className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg">
                 <span className="w-3 h-3 bg-white rounded-full animate-pulse"></span>
@@ -134,11 +174,23 @@ const WebcamCapture = ({ type, onCapture }) => {
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-100">
             <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-5xl">📹</span>
-              </div>
-              <p className="text-gray-700 font-medium">Webcam preview will appear here</p>
-              <p className="text-sm text-gray-500 mt-1">Click "Start Webcam" to begin</p>
+              {isLoading ? (
+                <>
+                  <div className="w-20 h-20 mx-auto mb-4 bg-[#005F50]/10 rounded-full flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#005F50]"></div>
+                  </div>
+                  <p className="text-gray-700 font-medium">Accessing camera...</p>
+                  <p className="text-sm text-gray-500 mt-1">Please allow camera permission</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-5xl">📹</span>
+                  </div>
+                  <p className="text-gray-700 font-medium">Webcam preview will appear here</p>
+                  <p className="text-sm text-gray-500 mt-1">Click "Start Webcam" to begin</p>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -168,12 +220,13 @@ const WebcamCapture = ({ type, onCapture }) => {
         {!stream ? (
           <button
             onClick={startWebcam}
-            className="px-8 py-3 bg-[#005F50] hover:bg-[#007A65] text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center gap-2"
+            disabled={isLoading}
+            className="px-8 py-3 bg-[#005F50] hover:bg-[#007A65] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
             </svg>
-            Start Webcam
+            {isLoading ? "Accessing Camera..." : "Start Webcam"}
           </button>
         ) : (
           <>
@@ -225,7 +278,7 @@ const WebcamCapture = ({ type, onCapture }) => {
       </div>
 
       {/* Info Message */}
-      {!stream && !error && (
+      {!stream && !error && !isLoading && (
         <div className="bg-[#005F50]/5 border border-[#005F50]/20 rounded-lg p-3">
           <div className="flex items-start gap-2">
             <svg

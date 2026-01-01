@@ -4,8 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { algorithms, getAlgorithmsByIds } from "../constants/algorithms";
 import AlgorithmCard from "../components/algorithm/AlgorithmCard";
 import DetectionSettings from "../components/algorithm/DetectionSettings";
-import AlgorithmComparison from "../components/algorithm/AlgorithmComparison";
-import SelectedAlgorithmsSummary from "../components/algorithm/SelectedAlgorithmsSummary";
 
 const AlgorithmSelectionPage = () => {
   const navigate = useNavigate();
@@ -14,43 +12,31 @@ const AlgorithmSelectionPage = () => {
   const [detectionSettings, setDetectionSettings] = useState(null);
   const [inputData, setInputData] = useState(null);
 
-  // Load input data from sessionStorage or location state
   useEffect(() => {
-    // Try to get from location state first (from navigation)
     if (location.state) {
       setInputData(location.state);
     } else {
-      // Fallback to sessionStorage
       const data = sessionStorage.getItem("inputData");
       if (data) {
         setInputData(JSON.parse(data));
       } else {
-        // If no input data, redirect back to input page
         navigate("/input");
       }
     }
   }, [navigate, location.state]);
 
-  // Toggle algorithm selection
   const toggleAlgorithm = (algorithmId) => {
     setSelectedAlgorithms((prev) =>
       prev.includes(algorithmId) ? prev.filter((id) => id !== algorithmId) : [...prev, algorithmId]
     );
   };
 
-  // Remove algorithm from selection
-  const removeAlgorithm = (algorithmId) => {
-    setSelectedAlgorithms((prev) => prev.filter((id) => id !== algorithmId));
-  };
-
-  // Handle start processing
   const handleStartProcessing = () => {
     if (selectedAlgorithms.length === 0) {
       alert("Please select at least one algorithm");
       return;
     }
 
-    // Create minimal data object WITHOUT the base64 image URL
     const processingData = {
       fileInfo: {
         name: inputData.fileInfo.name,
@@ -59,7 +45,6 @@ const AlgorithmSelectionPage = () => {
         resolution: inputData.fileInfo.resolution,
         width: inputData.fileInfo.width,
         height: inputData.fileInfo.height,
-        // DON'T include url - it's too large for sessionStorage
         ...(inputData.inputType === "video" && {
           duration: inputData.fileInfo.duration,
           durationSeconds: inputData.fileInfo.durationSeconds,
@@ -75,21 +60,17 @@ const AlgorithmSelectionPage = () => {
     };
 
     try {
-      // Try to store in sessionStorage (without the URL)
       sessionStorage.setItem("processingData", JSON.stringify(processingData));
-      console.log("Processing data stored successfully");
     } catch (error) {
       console.warn("Could not store in sessionStorage:", error.message);
-      // Continue anyway - we'll use location.state
     }
 
-    // Navigate with full data including URL in location.state
     navigate("/processing", {
       state: {
         ...processingData,
         fileInfo: {
           ...processingData.fileInfo,
-          url: inputData.fileInfo.url, // Include URL in navigation state only
+          url: inputData.fileInfo.url,
         },
       },
     });
@@ -98,64 +79,83 @@ const AlgorithmSelectionPage = () => {
   const selectedAlgoObjects = getAlgorithmsByIds(selectedAlgorithms);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#E6E6E6]">
       {/* Header */}
-      <header className="p-6 border-b border-white/10 sticky top-0 bg-slate-900/80 backdrop-blur-lg z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-gray-400 hover:text-white transition flex items-center gap-2"
-            >
-              <span>←</span> Back
-            </button>
-            <h1 className="text-2xl font-bold text-white">🔬 Algorithm Selection</h1>
-          </div>
-          <div className="text-sm text-gray-400">
-            Input: <span className="text-white font-medium">{inputData?.fileInfo?.name || "Loading..."}</span>
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">🎯 Select Detection Algorithms</h1>
+              <p className="text-sm text-gray-600 mt-1">Choose one or more algorithms to run</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">File:</p>
+              <p className="font-semibold text-gray-900">{inputData?.fileInfo?.name || "Loading..."}</p>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Info Banner */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-8">
-          <p className="text-blue-200 text-sm flex items-center gap-2">
-            <span>💡</span>
-            Select multiple algorithms to enable comparison mode and analyze performance differences
-          </p>
-        </div>
+      <main className="max-w-7xl mx-auto px-6 py-12 pb-32">
+        {/* Selection Counter */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#005F50] rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">{selectedAlgorithms.length}</span>
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">
+                  {selectedAlgorithms.length} algorithm{selectedAlgorithms.length !== 1 && "s"} selected
+                </p>
+                <p className="text-sm text-gray-600">
+                  {selectedAlgorithms.length === 0 && "Select at least one algorithm to continue"}
+                  {selectedAlgorithms.length === 1 && "Single algorithm mode"}
+                  {selectedAlgorithms.length >= 2 && "Comparison mode enabled"}
+                </p>
+              </div>
+            </div>
 
-        {/* Selection Info */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Select Detection Algorithm(s)</h2>
-            <div className="text-gray-300">
-              Selected:{" "}
-              <span
-                className={`font-bold ${selectedAlgorithms.length > 0 ? "text-blue-400" : "text-gray-400"}`}
+            {selectedAlgorithms.length > 0 && (
+              <button
+                onClick={() => setSelectedAlgorithms([])}
+                className="text-sm text-red-600 hover:text-red-700 font-medium"
               >
-                {selectedAlgorithms.length}
-              </span>{" "}
-              algorithm{selectedAlgorithms.length !== 1 && "s"}
+                Clear all
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Selected Algorithms Preview */}
+        {selectedAlgorithms.length > 0 && (
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-8">
+            <p className="text-sm font-bold text-blue-900 mb-2">Selected Algorithms:</p>
+            <div className="flex flex-wrap gap-2">
+              {selectedAlgoObjects.map((algo) => (
+                <div
+                  key={algo.id}
+                  className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-300"
+                >
+                  <span className="text-sm font-medium text-gray-900">{algo.name}</span>
+                  <button
+                    onClick={() => toggleAlgorithm(algo.id)}
+                    className="text-gray-500 hover:text-red-600"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* Selected Algorithms Summary */}
-          {selectedAlgorithms.length > 0 && (
-            <SelectedAlgorithmsSummary algorithms={selectedAlgoObjects} onRemove={removeAlgorithm} />
-          )}
-        </div>
-
-        {/* Comparison Mode Info */}
-        {selectedAlgorithms.length >= 2 && (
-          <div className="mb-8">
-            <AlgorithmComparison selectedAlgorithms={selectedAlgorithms} />
-          </div>
         )}
-
         {/* Algorithm Cards Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           {algorithms.map((algorithm) => (
             <AlgorithmCard
               key={algorithm.id}
@@ -165,42 +165,52 @@ const AlgorithmSelectionPage = () => {
             />
           ))}
         </div>
-
         {/* Detection Settings */}
-        <div className="mb-12">
-          <DetectionSettings onSettingsChange={setDetectionSettings} />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center sticky bottom-6 bg-slate-900/95 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition flex items-center gap-2"
-          >
-            <span>←</span> Back to Input
-          </button>
-
-          <div className="flex items-center gap-4">
-            {selectedAlgorithms.length > 0 && (
-              <div className="text-sm text-gray-400">
-                Ready to process with {selectedAlgorithms.length} algorithm
-                {selectedAlgorithms.length !== 1 && "s"}
-              </div>
-            )}
-            <button
-              onClick={handleStartProcessing}
-              disabled={selectedAlgorithms.length === 0}
-              className={`px-8 py-4 rounded-xl font-medium transition flex items-center gap-2 ${
-                selectedAlgorithms.length === 0
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              }`}
-            >
-              Start Processing
-              <span>→</span>
-            </button>
+        {selectedAlgorithms.length > 0 && (
+          <div className="mb-8">
+            <DetectionSettings onSettingsChange={setDetectionSettings} />
           </div>
-        </div>
+        )}
+        {/* Fixed Bottom Action Bar */}
+        {/* Continue Button Banner - When algorithms are selected */}
+        {selectedAlgorithms.length > 0 && (
+          <div className="bg-green-50 border-2 border-green-500 rounded-xl p-6 mb-8 animate-bounce-once">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-green-900">Ready to Process!</p>
+                  <p className="text-sm text-green-700">
+                    {selectedAlgorithms.length} algorithm{selectedAlgorithms.length !== 1 && "s"} selected
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleStartProcessing}
+                className="px-8 py-3 bg-[#005F50] hover:bg-[#007A65] text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg flex items-center gap-2"
+              >
+                Continue to Processing
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

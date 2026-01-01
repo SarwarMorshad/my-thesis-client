@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+/* Add to src/index.css or your main CSS file */
+
+/* Custom slider styles */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #005f50;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 95, 80, 0.4);
+  border: 3px solid white;
+}
+
+.slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #005f50;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 95, 80, 0.4);
+  border: 3px solid white;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 95, 80, 0.6);
+}
+
+.slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 95, 80, 0.6);
+}
