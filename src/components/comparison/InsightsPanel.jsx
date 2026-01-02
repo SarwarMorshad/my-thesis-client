@@ -12,6 +12,9 @@ const InsightsPanel = ({ algorithms, data }) => {
 
   insights.push({
     icon: "⚡",
+    color: "text-yellow-600",
+    bg: "bg-yellow-50",
+    border: "border-yellow-200",
     text: `${algorithms.find((a) => a.id === fastest.id)?.name} is ${speedDiff}% faster than ${
       algorithms.find((a) => a.id === slowest.id)?.name
     }`,
@@ -27,6 +30,9 @@ const InsightsPanel = ({ algorithms, data }) => {
   if (detectionDiff > 0) {
     insights.push({
       icon: "🎯",
+      color: "text-green-600",
+      bg: "bg-green-50",
+      border: "border-green-200",
       text: `${
         algorithms.find((a) => a.id === mostDetections.id)?.name
       } detected ${detectionDiff} more object${detectionDiff > 1 ? "s" : ""} than ${
@@ -43,6 +49,9 @@ const InsightsPanel = ({ algorithms, data }) => {
 
   insights.push({
     icon: "📊",
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
     text: `${
       algorithms.find((a) => a.id === highestConf.id)?.name
     } has ${confDiff}% higher confidence scores on average`,
@@ -52,6 +61,9 @@ const InsightsPanel = ({ algorithms, data }) => {
   // Model size comparison
   insights.push({
     icon: "💾",
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
     text: `Model sizes range from ${Math.min(
       ...algorithms.map((a) => parseFloat(a.specs.modelSize))
     )}MB to ${Math.max(...algorithms.map((a) => parseFloat(a.specs.modelSize)))}MB`,
@@ -59,22 +71,33 @@ const InsightsPanel = ({ algorithms, data }) => {
   });
 
   return (
-    <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-6">
-      <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-        <span>💡</span>
-        Key Insights
-      </h3>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-10 h-10 bg-[#005F50] rounded-lg flex items-center justify-center">
+          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-gray-900">Key Insights</h3>
+      </div>
 
       <div className="space-y-3">
         {insights.map((insight, index) => (
           <div
             key={index}
-            className="flex items-start gap-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition"
+            className={`flex items-start gap-3 p-4 rounded-lg border-2 ${insight.bg} ${insight.border} transition-all hover:shadow-md`}
           >
-            <span className="text-2xl">{insight.icon}</span>
-            <p className="text-gray-300 text-sm flex-1">{insight.text}</p>
+            <div className={`text-2xl flex-shrink-0 ${insight.color}`}>{insight.icon}</div>
+            <p className="text-gray-700 text-sm font-medium flex-1 leading-relaxed">{insight.text}</p>
           </div>
         ))}
+      </div>
+
+      {/* Summary */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <p className="text-xs text-gray-600 text-center">
+          💡 These insights help you choose the best algorithm for your specific use case
+        </p>
       </div>
     </div>
   );

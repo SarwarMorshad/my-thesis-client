@@ -16,8 +16,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   ScatterChart,
   Scatter,
   ZAxis,
@@ -154,8 +152,30 @@ const Statistics = () => {
   };
 
   const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return "⇅";
-    return sortConfig.direction === "asc" ? "↑" : "↓";
+    if (sortConfig.key !== key) {
+      return (
+        <svg className="w-4 h-4 inline-block ml-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M5 12a1 1 0 102 0V6.414l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L5 6.414V12zM15 8a1 1 0 10-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L15 13.586V8z" />
+        </svg>
+      );
+    }
+    return sortConfig.direction === "asc" ? (
+      <svg className="w-4 h-4 inline-block ml-1 text-[#005F50]" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+          clipRule="evenodd"
+        />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 inline-block ml-1 text-[#005F50]" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+          clipRule="evenodd"
+        />
+      </svg>
+    );
   };
 
   const handleAlgorithmChange = (algoId) => {
@@ -254,10 +274,10 @@ const Statistics = () => {
 
   if (!results || !algorithm) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen bg-[#E6E6E6] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">⏳</div>
-          <p className="text-gray-700">Loading statistics...</p>
+          <p className="text-gray-700 font-medium">Loading statistics...</p>
         </div>
       </div>
     );
@@ -265,7 +285,7 @@ const Statistics = () => {
 
   const stats = calculateStats();
 
-  // Prepare chart data
+  // Chart data preparation
   const confidenceChartData = realDetections.map((det, index) => ({
     name: `${det.class} ${index + 1}`,
     confidence: Math.round(det.confidence * 100),
@@ -285,16 +305,14 @@ const Statistics = () => {
 
   const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
-  // Scatter plot data (Position vs Size)
-  const scatterData = realDetections.map((det, index) => ({
-    x: det.x + det.width / 2, // Center X
-    y: det.y + det.height / 2, // Center Y
-    z: det.width * det.height, // Size
+  const scatterData = realDetections.map((det) => ({
+    x: det.x + det.width / 2,
+    y: det.y + det.height / 2,
+    z: det.width * det.height,
     class: det.class,
     confidence: Math.round(det.confidence * 100),
   }));
 
-  // Size distribution data
   const sizeDistributionData = realDetections.map((det, index) => ({
     name: `${det.class} ${index + 1}`,
     size: Math.round(det.width * det.height),
@@ -311,7 +329,7 @@ const Statistics = () => {
       ? realDetections.reduce((min, d) => (d.confidence < min.confidence ? d : min))
       : null;
 
-  // Spatial distribution
+  // Spatial distribution grid
   const spatialGrid = Array(3)
     .fill(0)
     .map(() =>
@@ -338,29 +356,32 @@ const Statistics = () => {
   });
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#E6E6E6] pb-24">
       {/* Header */}
-      <header className="bg-gray-100 border-b-2 border-gray-800 p-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">📊</span>
-            <h1 className="text-xl font-bold text-gray-800">{algorithm.name} - Detailed Analysis (Image)</h1>
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-[#005F50] rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{algorithm.name} - Detailed Statistics</h1>
+                <p className="text-sm text-gray-600">{results.fileInfo?.name}</p>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={() => navigateBack(navigate)}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded border border-gray-400 transition"
-          >
-            [← Back]
-          </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-8 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Algorithm Selector */}
         {allAlgorithms.length > 1 && (
-          <div className="mb-8 p-4 bg-gray-50 border-2 border-gray-300 rounded">
-            <p className="text-sm font-bold text-gray-700 mb-3">Switch Algorithm:</p>
-            <div className="flex gap-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <p className="text-sm font-bold text-gray-900 mb-3">Switch Algorithm:</p>
+            <div className="flex flex-wrap gap-3">
               {allAlgorithms.map((algo) => {
                 const isActive = algo.id === currentAlgorithmId;
                 const algoDetections = results.detectionResults?.[algo.id]?.detections?.length || 0;
@@ -368,16 +389,14 @@ const Statistics = () => {
                   <button
                     key={algo.id}
                     onClick={() => handleAlgorithmChange(algo.id)}
-                    className={`px-4 py-2 rounded border-2 font-medium transition ${
+                    className={`px-6 py-3 rounded-lg border-2 font-medium transition-all ${
                       isActive
-                        ? "bg-blue-600 text-white border-blue-800"
-                        : "bg-white text-gray-700 border-gray-400 hover:bg-gray-100"
+                        ? "bg-[#005F50] text-white border-[#005F50] shadow-lg"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
                     }`}
                   >
-                    <div>
-                      <p className="font-bold">{algo.name}</p>
-                      <p className="text-xs opacity-80">{algoDetections} objects</p>
-                    </div>
+                    <p className="font-bold">{algo.name}</p>
+                    <p className="text-xs opacity-80">{algoDetections} objects</p>
                   </button>
                 );
               })}
@@ -385,250 +404,216 @@ const Statistics = () => {
           </div>
         )}
 
-        {/* Input Info */}
-        <div className="mb-8">
-          <p className="text-gray-700 font-mono text-sm">
-            <strong>Input:</strong> {results.fileInfo?.name} ({results.fileInfo?.width}×
-            {results.fileInfo?.height})
-          </p>
-        </div>
-
-        {/* Detection Summary */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-            DETECTION SUMMARY
-          </h2>
-          <div className="border-2 border-gray-800 p-6 bg-gray-50 font-mono text-sm space-y-1">
-            <p>
-              Total Objects: <strong>{stats.totalDetections}</strong>
-            </p>
-            <p>
-              Processing Time: <strong>{stats.processingTime}</strong>
-            </p>
-            <p>
-              Average Confidence: <strong>{stats.avgConfidence}</strong>
-            </p>
-            <p>
-              Model:{" "}
-              <strong>
-                {algorithm.name} ({algorithm.specs.modelSize})
-              </strong>
-            </p>
-            <p>
-              Input Resolution:{" "}
-              <strong>
-                {results.fileInfo?.width}×{results.fileInfo?.height} → 640×640 (resized)
-              </strong>
-            </p>
+        {/* Summary Stats */}
+        <div className="grid md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <p className="text-sm text-gray-600 mb-2">Total Objects</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.totalDetections}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <p className="text-sm text-gray-600 mb-2">Processing Time</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.processingTime}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <p className="text-sm text-gray-600 mb-2">Avg Confidence</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.avgConfidence}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <p className="text-sm text-gray-600 mb-2">Unique Classes</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.uniqueClasses}</p>
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Charts */}
         {realDetections.length > 0 && (
           <>
-            {/* Confidence Bar Chart */}
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-                CONFIDENCE DISTRIBUTION CHART
-              </h2>
-              <div className="border-2 border-gray-800 p-6 bg-white">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={confidenceChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis label={{ value: "Confidence (%)", angle: -90, position: "insideLeft" }} />
-                    <Tooltip formatter={(value) => `${value}%`} />
-                    <Bar dataKey="confidence" />
-                  </BarChart>
-                </ResponsiveContainer>
-
-                <div className="font-mono text-sm space-y-1 pt-4 border-t border-gray-300 mt-4">
-                  {highestConfidence && (
-                    <p>
-                      Highest:{" "}
-                      <strong className="capitalize">
-                        {highestConfidence.class} ({(highestConfidence.confidence * 100).toFixed(0)}%)
-                      </strong>
+            {/* Confidence Distribution */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Confidence Distribution</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={confidenceChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                  <YAxis label={{ value: "Confidence (%)", angle: -90, position: "insideLeft" }} />
+                  <Tooltip formatter={(value) => `${value}%`} />
+                  <Bar dataKey="confidence" />
+                </BarChart>
+              </ResponsiveContainer>
+              {highestConfidence && lowestConfidence && (
+                <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-green-700 font-medium mb-1">Highest</p>
+                    <p className="text-gray-900 font-bold capitalize">
+                      {highestConfidence.class} ({(highestConfidence.confidence * 100).toFixed(0)}%)
                     </p>
-                  )}
-                  {lowestConfidence && (
-                    <p>
-                      Lowest:{" "}
-                      <strong className="capitalize">
-                        {lowestConfidence.class} ({(lowestConfidence.confidence * 100).toFixed(0)}%)
-                      </strong>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p className="text-orange-700 font-medium mb-1">Lowest</p>
+                    <p className="text-gray-900 font-bold capitalize">
+                      {lowestConfidence.class} ({(lowestConfidence.confidence * 100).toFixed(0)}%)
                     </p>
-                  )}
-                  <p>
-                    Average: <strong>{stats.avgConfidence}</strong>
-                  </p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-blue-700 font-medium mb-1">Average</p>
+                    <p className="text-gray-900 font-bold">{stats.avgConfidence}</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Class Distribution Pie Chart */}
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-                CLASS DISTRIBUTION PIE CHART
-              </h2>
-              <div className="border-2 border-gray-800 p-6 bg-white">
-                <ResponsiveContainer width="100%" height={400}>
-                  <PieChart>
-                    <Pie
-                      data={classDistributionData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name, percentage }) => `${name}: ${percentage}%`}
-                      outerRadius={120}
-                      fill="#8884d8"
-                      dataKey="count"
-                    >
-                      {classDistributionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Class Distribution</h2>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={classDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {classDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
 
-            {/* Object Size Bar Chart */}
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-                OBJECT SIZE DISTRIBUTION
-              </h2>
-              <div className="border-2 border-gray-800 p-6 bg-white">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={sizeDistributionData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                    <YAxis label={{ value: "Size (pixels²)", angle: -90, position: "insideLeft" }} />
-                    <Tooltip formatter={(value) => `${value.toLocaleString()} px²`} />
-                    <Bar dataKey="size" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {/* Object Size Distribution */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Object Size Distribution</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={sizeDistributionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                  <YAxis label={{ value: "Size (pixels²)", angle: -90, position: "insideLeft" }} />
+                  <Tooltip formatter={(value) => `${value.toLocaleString()} px²`} />
+                  <Bar dataKey="size" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
-            {/* Scatter Plot - Position Distribution */}
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-                SPATIAL POSITION SCATTER PLOT
-              </h2>
-              <div className="border-2 border-gray-800 p-6 bg-white">
-                <ResponsiveContainer width="100%" height={400}>
-                  <ScatterChart>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      type="number"
-                      dataKey="x"
-                      name="X Position"
-                      label={{ value: "X Position (pixels)", position: "insideBottom", offset: -5 }}
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="y"
-                      name="Y Position"
-                      label={{ value: "Y Position (pixels)", angle: -90, position: "insideLeft" }}
-                    />
-                    <ZAxis type="number" dataKey="z" range={[50, 400]} name="Size" />
-                    <Tooltip
-                      cursor={{ strokeDasharray: "3 3" }}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white border-2 border-gray-800 p-2 font-mono text-xs">
-                              <p>
-                                <strong>Class:</strong> {data.class}
-                              </p>
-                              <p>
-                                <strong>Position:</strong> ({Math.round(data.x)}, {Math.round(data.y)})
-                              </p>
-                              <p>
-                                <strong>Size:</strong> {data.z.toLocaleString()} px²
-                              </p>
-                              <p>
-                                <strong>Confidence:</strong> {data.confidence}%
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Scatter name="Objects" data={scatterData} fill="#3b82f6" />
-                  </ScatterChart>
-                </ResponsiveContainer>
-                <p className="text-xs text-gray-600 text-center mt-2 font-mono">
-                  Bubble size represents object size. Hover over bubbles for details.
-                </p>
-              </div>
+            {/* Spatial Position Scatter Plot */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Spatial Position Distribution</h2>
+              <ResponsiveContainer width="100%" height={400}>
+                <ScatterChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    type="number"
+                    dataKey="x"
+                    name="X Position"
+                    label={{ value: "X Position (pixels)", position: "insideBottom", offset: -5 }}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="y"
+                    name="Y Position"
+                    label={{ value: "Y Position (pixels)", angle: -90, position: "insideLeft" }}
+                  />
+                  <ZAxis type="number" dataKey="z" range={[50, 400]} name="Size" />
+                  <Tooltip
+                    cursor={{ strokeDasharray: "3 3" }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white border-2 border-gray-300 rounded-lg p-3 shadow-lg">
+                            <p className="text-sm">
+                              <strong>Class:</strong> {data.class}
+                            </p>
+                            <p className="text-sm">
+                              <strong>Position:</strong> ({Math.round(data.x)}, {Math.round(data.y)})
+                            </p>
+                            <p className="text-sm">
+                              <strong>Size:</strong> {data.z.toLocaleString()} px²
+                            </p>
+                            <p className="text-sm">
+                              <strong>Confidence:</strong> {data.confidence}%
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Scatter name="Objects" data={scatterData} fill="#3b82f6" />
+                </ScatterChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-gray-600 text-center mt-2">
+                Bubble size represents object size. Hover for details.
+              </p>
             </div>
           </>
         )}
 
         {/* Detection Table */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-            DETECTED OBJECTS TABLE
-          </h2>
-          <div className="border-2 border-gray-800 overflow-hidden">
-            <table className="w-full font-mono text-sm">
-              <thead className="bg-gray-100">
-                <tr className="border-b-2 border-gray-800">
-                  <th className="py-2 px-3 text-left font-bold">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-bold text-gray-900">Detected Objects</h2>
+            <p className="text-sm text-gray-600 mt-1">Click column headers to sort</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b-2 border-gray-200">
+                <tr>
+                  <th className="py-3 px-4 text-left">
                     <button
                       onClick={() => handleSort("id")}
-                      className="hover:text-blue-600 transition w-full text-left"
+                      className="hover:text-[#005F50] transition font-bold text-gray-700 flex items-center"
                     >
                       ID {getSortIcon("id")}
                     </button>
                   </th>
-                  <th className="py-2 px-3 text-left font-bold">
+                  <th className="py-3 px-4 text-left">
                     <button
                       onClick={() => handleSort("class")}
-                      className="hover:text-blue-600 transition w-full text-left"
+                      className="hover:text-[#005F50] transition font-bold text-gray-700 flex items-center"
                     >
                       Class {getSortIcon("class")}
                     </button>
                   </th>
-                  <th className="py-2 px-3 text-left font-bold">
+                  <th className="py-3 px-4 text-left">
                     <button
                       onClick={() => handleSort("confidence")}
-                      className="hover:text-blue-600 transition w-full text-left"
+                      className="hover:text-[#005F50] transition font-bold text-gray-700 flex items-center"
                     >
-                      Conf {getSortIcon("confidence")}
+                      Confidence {getSortIcon("confidence")}
                     </button>
                   </th>
-                  <th className="py-2 px-3 text-left font-bold">Box (x,y,w,h)</th>
-                  <th className="py-2 px-3 text-left font-bold">
+                  <th className="py-3 px-4 text-left font-bold text-gray-700">Position</th>
+                  <th className="py-3 px-4 text-left">
                     <button
                       onClick={() => handleSort("width")}
-                      className="hover:text-blue-600 transition w-full text-left"
+                      className="hover:text-[#005F50] transition font-bold text-gray-700 flex items-center"
                     >
                       Size {getSortIcon("width")}
                     </button>
                   </th>
-                  <th className="py-2 px-3 text-left font-bold">Color</th>
+                  <th className="py-3 px-4 text-left font-bold text-gray-700">Color</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedDetections.map((det, index) => (
-                  <tr key={index} className="border-b border-gray-300 bg-white hover:bg-gray-50 transition">
-                    <td className="py-2 px-3">{det.id}</td>
-                    <td className="py-2 px-3 capitalize font-semibold">{det.class}</td>
-                    <td className="py-2 px-3">{(det.confidence * 100).toFixed(0)}%</td>
-                    <td className="py-2 px-3">
-                      {Math.round(det.x)},{Math.round(det.y)},{Math.round(det.width)},{Math.round(det.height)}
+                  <tr key={index} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                    <td className="py-3 px-4 text-gray-900">{det.id}</td>
+                    <td className="py-3 px-4 capitalize font-semibold text-gray-900">{det.class}</td>
+                    <td className="py-3 px-4 text-gray-900">{(det.confidence * 100).toFixed(0)}%</td>
+                    <td className="py-3 px-4 text-gray-600 text-sm">
+                      ({Math.round(det.x)}, {Math.round(det.y)}) • {Math.round(det.width)}×
+                      {Math.round(det.height)}
                     </td>
-                    <td className="py-2 px-3">{Math.round(det.width * det.height)}px</td>
-                    <td className="py-2 px-3">
+                    <td className="py-3 px-4 text-gray-900">{Math.round(det.width * det.height)} px²</td>
+                    <td className="py-3 px-4">
                       <div
-                        className="w-6 h-6 rounded-full border-2 border-gray-800 inline-block"
+                        className="w-8 h-8 rounded-lg border-2 border-gray-300"
                         style={{ backgroundColor: det.color }}
                       />
                     </td>
@@ -637,105 +622,102 @@ const Statistics = () => {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-gray-500 mt-2 font-mono">💡 Click column headers to sort</p>
         </div>
 
         {/* Spatial Distribution Grid */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-gray-800 mb-3 pb-2 border-b-2 border-gray-800">
-            SPATIAL DISTRIBUTION GRID
-          </h2>
-          <div className="border-2 border-gray-800 p-6 bg-white">
-            <p className="font-mono text-sm mb-4">Image Regions:</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Spatial Distribution Grid</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-2 border-gray-300">
+              <tbody>
+                {spatialGrid.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, colIndex) => {
+                      const classCounts = cell.reduce((acc, item) => {
+                        acc[item.class] = (acc[item.class] || 0) + 1;
+                        return acc;
+                      }, {});
 
-            <div className="mb-4">
-              <table className="w-full border-2 border-gray-800 font-mono text-sm">
-                <tbody>
-                  {spatialGrid.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {row.map((cell, colIndex) => {
-                        const classCounts = cell.reduce((acc, item) => {
-                          acc[item.class] = (acc[item.class] || 0) + 1;
-                          return acc;
-                        }, {});
-
-                        return (
-                          <td
-                            key={colIndex}
-                            className="border-2 border-gray-800 p-4 text-center align-top h-32"
-                          >
-                            {cell.length > 0 ? (
-                              <div>
-                                {Object.entries(classCounts).map(([className, count]) => (
-                                  <div key={className} className="mb-1">
-                                    <p className="font-bold capitalize text-sm">{className}</p>
-                                    <p className="text-2xl font-bold">{count}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-3xl font-bold text-gray-300">0</p>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="pl-4 text-sm text-gray-600 align-middle">
-                        {rowIndex === 0 && "Top Row"}
-                        {rowIndex === 1 && "Middle Row"}
-                        {rowIndex === 2 && "Bottom Row"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="font-mono text-sm text-center text-gray-600">
-              {(() => {
-                const filledCells = spatialGrid.flat().filter((cell) => cell.length > 0).length;
-                const totalObjects = spatialGrid.flat().reduce((sum, cell) => sum + cell.length, 0);
-                return `${totalObjects} object${
-                  totalObjects !== 1 ? "s" : ""
-                } distributed across ${filledCells} region${filledCells !== 1 ? "s" : ""}`;
-              })()}
-            </p>
+                      return (
+                        <td
+                          key={colIndex}
+                          className="border-2 border-gray-300 p-6 text-center align-top h-32 bg-gray-50"
+                        >
+                          {cell.length > 0 ? (
+                            <div>
+                              {Object.entries(classCounts).map(([className, count]) => (
+                                <div key={className} className="mb-2">
+                                  <p className="font-bold capitalize text-sm text-gray-700">{className}</p>
+                                  <p className="text-2xl font-bold text-gray-900">{count}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-3xl font-bold text-gray-300">0</p>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="pl-4 text-sm text-gray-600 align-middle">
+                      {rowIndex === 0 && "Top Row"}
+                      {rowIndex === 1 && "Middle Row"}
+                      {rowIndex === 2 && "Bottom Row"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          <p className="text-sm text-center text-gray-600 mt-4">
+            {(() => {
+              const filledCells = spatialGrid.flat().filter((cell) => cell.length > 0).length;
+              const totalObjects = spatialGrid.flat().reduce((sum, cell) => sum + cell.length, 0);
+              return `${totalObjects} object${
+                totalObjects !== 1 ? "s" : ""
+              } distributed across ${filledCells} region${filledCells !== 1 ? "s" : ""}`;
+            })()}
+          </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center pt-4">
-          <button
-            onClick={() => navigateToResults(navigate, results)}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded border-2 border-blue-800 transition"
-          >
-            ← Back to Results
-          </button>
-          <button
-            onClick={handleDownloadImage}
-            className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded border-2 border-teal-800 transition"
-          >
-            🖼️ Download Image
-          </button>
-          <button
-            onClick={handleExportJSON}
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded border-2 border-green-800 transition"
-          >
-            📄 Export JSON
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded border-2 border-purple-800 transition"
-          >
-            📊 Export CSV
-          </button>
-          {allAlgorithms.length > 1 && (
-            <button
-              onClick={() => navigateToComparison(navigate, results)}
-              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded border-2 border-orange-800 transition"
-            >
-              🔬 Compare Algorithms
-            </button>
-          )}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Actions</h3>
+          <div className="flex justify-center">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => navigateToResults(navigate, results)}
+                className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg border border-gray-300 transition"
+              >
+                ← Back to Results
+              </button>
+              <button
+                onClick={handleDownloadImage}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition"
+              >
+                🖼️ Download Image
+              </button>
+              <button
+                onClick={handleExportJSON}
+                className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition"
+              >
+                📄 Export JSON
+              </button>
+              <button
+                onClick={handleExportCSV}
+                className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg transition"
+              >
+                📊 Export CSV
+              </button>
+              {allAlgorithms.length > 1 && (
+                <button
+                  onClick={() => navigateToComparison(navigate, results)}
+                  className="px-6 py-3 bg-[#005F50] hover:bg-[#007A65] text-white font-bold rounded-lg transition"
+                >
+                  🔬 Compare Algorithms
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>
