@@ -1,4 +1,4 @@
-# Deep Learning Object Detection Platform - Complete Documentation
+# Deep Learning Object Detection Platform
 
 ## Table of Contents
 
@@ -55,23 +55,23 @@ A web-based platform for comparing multiple object detection algorithms (YOLOv8,
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      User Interface Layer                    │
-│  (React Components, Routing, State Management)               │
+│                      User Interface Layer                   │
+│  (React Components, Routing, State Management)              │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────┴──────────────────────────────────────┐
-│                   Business Logic Layer                       │
-│  (Detection Service, Data Processing, Utilities)             │
+│                   Logic Layer                               │
+│  (Detection Service, Data Processing, Utilities)            │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────┴──────────────────────────────────────┐
-│                   AI/ML Integration Layer                    │
+│                   AI/ML Integration Layer                   │
 │  (TensorFlow.js, ONNX Runtime, Model Loading)               │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────┴──────────────────────────────────────┐
-│                      Data Storage Layer                      │
-│  (SessionStorage, State, File System)                        │
+│                      Data Storage Layer                     │
+│  (SessionStorage, State, File System)                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
